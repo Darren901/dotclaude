@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 工作流分享</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F4EF;
+      --surface: #FFFFFF;
+      --s2: #EFE9E1;
+      --s3: #E6DDD3;
+      --border: #DDD4C8;
+      --text: #1A1714;
+      --muted: #7A7370;
+      --accent: #C4956A;
+      --al: #EDE3D6;
+      --ad: #96704A;
+      /* featured card — replaces dark */
+      --feat-bg: #F2E9DE;
+      --feat-border: rgba(196,149,106,.55);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+    body::after {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.022; pointer-events: none; z-index: 999;
+    }
+
+    /* ── SLIDES ── */
+    #slides { position: relative; width: 100%; height: 100%; }
+    .slide {
+      position: absolute; inset: 0; padding: 48px 60px;
+      display: flex; flex-direction: column;
+      opacity: 0; transform: translateY(14px);
+      transition: opacity .42s cubic-bezier(.4,0,.2,1), transform .42s cubic-bezier(.4,0,.2,1);
+      pointer-events: none; overflow: hidden;
+    }
+    .slide.active { opacity: 1; transform: none; pointer-events: all; }
+    .tw-cursor { display:inline-block; color:var(--accent); font-weight:300; animation: tw-blink .65s step-end infinite; }
+    @keyframes tw-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── CHROME ── */
+    #progress { position: fixed; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--ad), var(--accent)); transition: width .4s ease; z-index: 500; }
+    #nav { position: fixed; bottom: 18px; right: 24px; display: flex; align-items: center; gap: 10px; z-index: 500; }
+    #counter { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: .1em; }
+    .nbtn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px; transition: all .2s; }
+    .nbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── TYPE ── */
+    .lbl { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+    h1 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: clamp(46px,5.8vw,76px); line-height: 1.08; letter-spacing: -.025em; }
+    h1 em { font-style: italic; color: var(--accent); }
+    h2 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: clamp(32px,3.8vw,52px); line-height: 1.15; letter-spacing: -.02em; }
+    h2 em { font-style: italic; color: var(--accent); }
+    h3 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: clamp(19px,2.1vw,26px); letter-spacing: -.01em; line-height: 1.25; }
+    .lead { font-size: clamp(17px,1.7vw,22px); line-height: 1.55; color: var(--muted); font-weight: 300; }
+    p { font-size: 17px; line-height: 1.65; color: var(--muted); font-weight: 300; }
+    strong { color: var(--text); font-weight: 500; }
+    code { font-family: 'DM Mono', monospace; font-size: .85em; color: var(--ad); background: var(--al); padding: 2px 6px; border-radius: 4px; }
+    blockquote { font-family: 'Playfair Display', serif; font-style: italic; font-size: clamp(17px,1.8vw,23px); line-height: 1.45; border-left: 2px solid var(--accent); padding-left: 18px; color: var(--text); }
+
+    /* ── CARDS ── */
+    .card   { background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 20px; }
+    .card-w { background: var(--s2);      border: 1px solid var(--border); border-radius: 13px; padding: 20px; }
+    .card-s { background: var(--s3);      border: 1px solid var(--border); border-radius: 13px; padding: 20px; }
+    .card-f { background: var(--feat-bg); border: 1px solid var(--feat-border); border-radius: 13px; padding: 20px; }
+    .card-a { background: var(--al);      border: 1px solid rgba(196,149,106,.35); border-radius: 13px; padding: 20px; }
+
+    /* ── UTILS ── */
+    .divider { width: 30px; height: 2px; background: var(--accent); }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .tag { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; background: var(--al); color: var(--ad); border: 1px solid rgba(196,149,106,.3); }
+    .tag-f { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; background: var(--feat-bg); color: var(--ad); border: 1px solid var(--feat-border); }
+    .chip { display: inline-flex; align-items: center; padding: 4px 13px; border-radius: 100px; font-size: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+
+    /* ── GRIDS ── */
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    /* ── CODE BLOCK (light parchment) ── */
+    .codeblock {
+      background: var(--feat-bg); border: 1px solid var(--feat-border);
+      border-radius: 12px; padding: 20px 24px;
+      font-family: 'DM Mono', monospace; font-size: 13.5px; line-height: 1.8; overflow: hidden;
+      color: var(--text);
+    }
+    .cg  { color: #A89888; }
+    .co  { color: var(--ad); font-weight: 500; }
+    .cb2 { color: #5B7D8A; }
+    .cw  { color: var(--text); }
+
+    /* ── BULLET LIST ── */
+    .bl { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .bl li { display: flex; align-items: flex-start; gap: 9px; font-size: 16px; color: var(--muted); line-height: 1.5; }
+    .bl li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
+
+    /* ── FLOW NODES ── */
+    .fn { display: flex; align-items: center; gap: 10px; }
+    .fn-box { padding: 8px 15px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+    .fn-u { background: var(--al);      color: var(--ad);   border: 1px solid rgba(196,149,106,.5); }
+    .fn-t { background: var(--s3);      color: var(--text); border: 1px solid var(--border); }
+    .fn-l { background: var(--feat-bg); color: var(--ad);   border: 1px solid var(--feat-border); }
+    .fn-m { background: var(--s2);      color: var(--text); border: 1px solid var(--border); }
+    .fa { width: 2px; height: 16px; background: var(--border); margin-left: 27px; position: relative; }
+    .fa::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid var(--border); }
+    .fd { font-size: 13px; color: var(--muted); margin-left: 12px; }
+
+    /* ── STEP BADGE ── */
+    .sb { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; flex-shrink: 0; font-family: 'DM Mono', monospace; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div id="progress"></div>
+  <div id="nav">
+    <button class="nbtn" onclick="go(-1)">←</button>
+    <span id="counter">1 / 12</span>
+    <button class="nbtn" onclick="go(1)">→</button>
+  </div>
+
+  <div id="slides">
+
+    <!-- S1 · COVER -->
+    <div class="slide active">
+      <div style="position:absolute;right:-120px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;background:radial-gradient(circle at 40% 40%,rgba(196,149,106,.12),transparent 68%);pointer-events:none;"></div>
+      <div style="position:absolute;right:52px;top:50%;transform:translateY(-50%);font-family:'Playfair Display',serif;font-size:220px;font-weight:700;color:var(--accent);opacity:.05;line-height:1;letter-spacing:-.05em;user-select:none;pointer-events:none;">AI</div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:26px;">
+        <div class="lbl">AI工作流 · 2026</div>
+        <h1>如何用 AI<br>打造<em>自己的</em><br>工作流</h1>
+        <div class="divider"></div>
+        <p id="cover-lead" class="lead" style="max-width:460px;"></p>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+        <div class="dot"></div>
+        <span style="font-size:15px;color:var(--muted);">Darren · 2026</span>
+      </div>
+    </div>
+
+    <!-- S4 · 4 TOOLS -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 01 — CLI Coding Tools</div>
+      <h2 style="margin-bottom:20px;">四個推薦工具</h2>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:13px;flex:1;">
+
+        <!-- Claude Code -->
+        <div class="card-f" style="display:flex;flex-direction:column;gap:11px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(196,149,106,.18),transparent 68%);pointer-events:none;"></div>
+          <div class="tag-f" style="width:fit-content;">Anthropic</div>
+          <h3 style="font-size:24px;line-height:1.2;">Claude Code</h3>
+          <p>最強 AI 工具，搭載最強 Coding 模型 <strong style="color:var(--ad);">Claude Opus 4.6</strong></p>
+          <div style="margin-top:auto;padding:9px;background:var(--al);border-radius:7px;border:1px solid rgba(196,149,106,.25);display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;align-items:center;gap:7px;"><div class="dot" style="background:#5FAD6A;"></div><span style="font-size:15px;color:var(--muted);">最完整 Skills 生態</span></div>
+            <div style="display:flex;align-items:center;gap:7px;"><div class="dot" style="background:#5FAD6A;"></div><span style="font-size:15px;color:var(--muted);">深度 codebase 理解</span></div>
+            <div style="display:flex;align-items:center;gap:7px;"><div class="dot" style="background:#5FAD6A;"></div><span style="font-size:15px;color:var(--muted);">功能最豐富</span></div>
+            <div style="display:flex;align-items:center;gap:7px;"><div class="dot" style="background:#E8836A;"></div><span style="font-size:15px;color:var(--muted);">token 消耗最貴</span></div>
+          </div>
+        </div>
+
+        <!-- Gemini -->
+        <div class="card" style="display:flex;flex-direction:column;gap:9px;">
+          <div class="tag">Google</div>
+          <h3 style="font-size:19px;line-height:1.2;">Gemini CLI</h3>
+          <p>免費可用，訂閱後 Gemini 3 Pro <strong>用到飽</strong>，額度最佛心</p>
+          <div style="margin-top:auto;padding:9px;background:var(--s2);border-radius:7px;">
+            <ul class="bl">
+              <li>模型比較不乖，難跟工作流穩定配合，適合入門試水溫</li>
+              <li>上下文長（100 萬 token），不易爆掉，但容易有幻覺</li>
+              <li>前端設計強</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Codex -->
+        <div class="card-w" style="display:flex;flex-direction:column;gap:9px;">
+          <div class="tag">OpenAI</div>
+          <h3 style="font-size:19px;line-height:1.2;">Codex CLI</h3>
+          <p>GPT-5.3-Codex，免費可用</p>
+          <div style="margin-top:auto;padding:9px;background:white;border-radius:7px;border:1px solid var(--border);">
+            <p style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px;">Code Review 神器</p>
+            <ul class="bl">
+              <li>Review 結果貼給 Claude，Claude 會乖乖照改 ✓</li>
+              <li>功能、客製化程度不夠多</li>
+              <li>執行力雖強，但要給非常明確、非常 detail 的指令才能做好，指令模糊就會跑偏</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- OpenCode -->
+        <div class="card" style="display:flex;flex-direction:column;gap:9px;">
+          <div class="tag">開源社群</div>
+          <h3 style="font-size:19px;line-height:1.2;">Open Code</h3>
+          <p>功能跟 Claude Code 差不多，支援<strong>各種模型</strong>隨意切換</p>
+          <div style="margin-top:auto;padding:9px;background:#FFF8F0;border-radius:7px;border:1px solid #FFD9A8;">
+            <ul class="bl">
+              <li style="color:#5FAD6A;">部署本地模型時可以搭配 opencode 使用，不綁定任何雲端廠商</li>
+              <li style="color:#8B6000;">因為是開源，Bug 偏多</li>
+              <li style="color:#8B6000;">不建議用邪門歪道登入，帳號會被鎖（e.g. Antigravity OAuth）——我就被鎖過</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:9px;padding:9px 15px;background:var(--al);border-radius:9px;">
+        <div class="dot"></div>
+        <p style="color:var(--ad);font-weight:500;">實際組合技：<strong>Claude Code 主力開發</strong> + <strong>Codex CLI 做 Code Review</strong>，兩個搭配用效果最佳</p>
+      </div>
+    </div>
+
+    <!-- S4.5 · THREE PILLARS -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 01 — CLI Coding Tools</div>
+      <h2 style="margin-bottom:8px;">選好工具後，還需要知道三件事</h2>
+      <p style="color:var(--muted);font-size:15px;margin-bottom:32px;">這三個概念決定了你能把 AI Coding Tool 用到多深。</p>
+
+      <div style="flex:1;display:flex;align-items:center;gap:0;max-height:340px;">
+
+        <!-- MCP Server -->
+        <div class="card-f" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:28px;">
+          <div style="font-family:'Playfair Display',serif;font-size:clamp(28px,3.2vw,42px);font-weight:700;letter-spacing:-.02em;line-height:1.1;">MCP<br>Server</div>
+          <div class="divider"></div>
+          <p style="font-size:16px;line-height:1.6;color:var(--muted);">給 AI 手腳——讓它能直接操作 GitHub、資料庫、瀏覽器等外部工具。</p>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ad);">接下來深入介紹 →</div>
+        </div>
+
+        <!-- Connector 1 -->
+        <div style="flex:0 0 44px;display:flex;align-items:center;justify-content:center;">
+          <svg width="44" height="20" viewBox="0 0 44 20" fill="none">
+            <line x1="0" y1="10" x2="32" y2="10" stroke="rgba(196,149,106,.4)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <path d="M 32 4 L 40 10 L 32 16" stroke="rgba(196,149,106,.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+
+        <!-- Agent Skills -->
+        <div class="card-w" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:28px;">
+          <div style="font-family:'Playfair Display',serif;font-size:clamp(28px,3.2vw,42px);font-weight:700;letter-spacing:-.02em;line-height:1.1;">Agent<br>Skills</div>
+          <div class="divider"></div>
+          <p style="font-size:16px;line-height:1.6;color:var(--muted);">給 AI 記憶與 SOP——把工作流程寫一次，之後每個專案都不用重新說明。</p>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">接下來也會介紹 →</div>
+        </div>
+
+        <!-- Connector 2 -->
+        <div style="flex:0 0 44px;display:flex;align-items:center;justify-content:center;">
+          <svg width="44" height="20" viewBox="0 0 44 20" fill="none">
+            <line x1="0" y1="10" x2="32" y2="10" stroke="rgba(196,149,106,.4)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <path d="M 32 4 L 40 10 L 32 16" stroke="rgba(196,149,106,.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+
+        <!-- LSP Server -->
+        <div class="card" style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:28px;">
+          <div style="display:flex;align-items:baseline;gap:10px;">
+            <div style="font-family:'Playfair Display',serif;font-size:clamp(28px,3.2vw,42px);font-weight:700;letter-spacing:-.02em;line-height:1.1;">LSP<br>Server</div>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;">幾乎內建 ✓</span>
+          </div>
+          <div class="divider"></div>
+          <p style="font-size:16px;line-height:1.6;color:var(--muted);">給 AI 讀懂程式碼——即時回報語法、型別錯誤，AI 能自我修正，不用等你指出。</p>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">主流工具已內建，不需額外設定</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- S5 · MCP INTRO + FLOW -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 02 — MCP</div>
+      <div class="g2" style="flex:1;gap:36px;align-items:start;">
+        <div style="display:flex;flex-direction:column;gap:22px;padding-top:4px;">
+          <div>
+            <h2 style="margin-bottom:14px;">MCP 是什麼？</h2>
+            <p class="lead">讓 AI 能<strong>操作外部工具</strong>的標準介面。</p>
+          </div>
+          <div class="divider"></div>
+          <blockquote style="font-size:15px;">把 AI 想成很聰明的新人，MCP 就是給他各種系統的<strong>帳號和權限</strong>。沒有 MCP，他只能告訴你怎麼做；有了 MCP，他能直接進去做。</blockquote>
+
+          <!-- MCP Hub Animation -->
+          <div style="margin-top:auto;padding-top:10px;display:flex;justify-content:center;">
+            <svg width="100%" height="177" viewBox="0 0 440 118" preserveAspectRatio="xMidYMid meet" style="overflow:visible;max-width:720px;">
+              <!-- Pulse rings around AI -->
+              <circle cx="220" cy="59" r="28" fill="none" stroke="rgba(196,149,106,.28)" stroke-width="1.5">
+                <animate attributeName="r" values="28;46;28" dur="3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values=".28;0;.28" dur="3s" repeatCount="indefinite"/>
+              </circle>
+              <!-- Connection lines -->
+              <line x1="220" y1="59" x2="55" y2="20" stroke="rgba(196,149,106,.32)" stroke-width="1.5" stroke-dasharray="5 4"/>
+              <line x1="220" y1="59" x2="385" y2="20" stroke="rgba(196,149,106,.32)" stroke-width="1.5" stroke-dasharray="5 4"/>
+              <line x1="220" y1="59" x2="55" y2="98" stroke="rgba(196,149,106,.32)" stroke-width="1.5" stroke-dasharray="5 4"/>
+              <line x1="220" y1="59" x2="385" y2="98" stroke="rgba(196,149,106,.32)" stroke-width="1.5" stroke-dasharray="5 4"/>
+              <!-- Packets: center → GitHub -->
+              <circle r="4" fill="#C4956A" opacity="0">
+                <animate attributeName="cx" values="220;57" dur="1.7s" repeatCount="indefinite" begin="0s"/>
+                <animate attributeName="cy" values="59;20" dur="1.7s" repeatCount="indefinite" begin="0s"/>
+                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="1.7s" repeatCount="indefinite" begin="0s"/>
+              </circle>
+              <!-- Packets: center → Docs -->
+              <circle r="4" fill="#C4956A" opacity="0">
+                <animate attributeName="cx" values="220;383" dur="2s" repeatCount="indefinite" begin=".6s"/>
+                <animate attributeName="cy" values="59;20" dur="2s" repeatCount="indefinite" begin=".6s"/>
+                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="2s" repeatCount="indefinite" begin=".6s"/>
+              </circle>
+              <!-- Packets: center → Browser -->
+              <circle r="4" fill="#96704A" opacity="0">
+                <animate attributeName="cx" values="220;57" dur="1.9s" repeatCount="indefinite" begin="1.1s"/>
+                <animate attributeName="cy" values="59;98" dur="1.9s" repeatCount="indefinite" begin="1.1s"/>
+                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="1.9s" repeatCount="indefinite" begin="1.1s"/>
+              </circle>
+              <!-- Packets: center → DB -->
+              <circle r="4" fill="#96704A" opacity="0">
+                <animate attributeName="cx" values="220;383" dur="1.6s" repeatCount="indefinite" begin="1.7s"/>
+                <animate attributeName="cy" values="59;98" dur="1.6s" repeatCount="indefinite" begin="1.7s"/>
+                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="1.6s" repeatCount="indefinite" begin="1.7s"/>
+              </circle>
+              <!-- Center AI node -->
+              <circle cx="220" cy="59" r="28" fill="#F2E9DE" stroke="rgba(196,149,106,.65)" stroke-width="1.5"/>
+              <text x="220" y="64" text-anchor="middle" font-family="'DM Mono', monospace" font-size="14" font-weight="600" fill="#96704A">AI</text>
+              <!-- Tool nodes (rounded rect) -->
+              <rect x="15" y="3" width="80" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+              <text x="55" y="18" text-anchor="middle" font-size="13">⑂</text>
+              <text x="55" y="31" text-anchor="middle" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">GitHub</text>
+              <rect x="345" y="3" width="80" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+              <text x="385" y="18" text-anchor="middle" font-size="13">📚</text>
+              <text x="385" y="31" text-anchor="middle" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">Context7</text>
+              <rect x="15" y="81" width="80" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+              <text x="55" y="96" text-anchor="middle" font-size="13">🌐</text>
+              <text x="55" y="109" text-anchor="middle" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">Browser</text>
+              <rect x="345" y="81" width="80" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+              <text x="385" y="96" text-anchor="middle" font-size="13">🗄️</text>
+              <text x="385" y="109" text-anchor="middle" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">Database</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Flow -->
+        <div style="display:flex;flex-direction:column;gap:0;padding-top:4px;">
+          <p style="font-size:16px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;letter-spacing:.05em;">互動流程</p>
+
+          <div class="fn"><div style="width:26px;height:26px;border-radius:50%;background:var(--al);border:1px solid rgba(196,149,106,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">👤</div><div class="fn-box fn-u">You — 下指令</div><span class="fd">「幫我查 GitHub issue」</span></div>
+          <div class="fa"></div>
+          <div class="fn"><div style="width:26px;height:26px;border-radius:50%;background:var(--s3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">⚡</div><div class="fn-box fn-t">Claude Code (MCP Client)</div><span class="fd">整合工具清單送出</span></div>
+          <div class="fa"></div>
+          <div class="fn"><div style="width:26px;height:26px;border-radius:50%;background:var(--feat-bg);border:1px solid var(--feat-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;color:var(--ad);font-family:'DM Mono',monospace;font-weight:500;">AI</div><div class="fn-box fn-l">LLM 思考決策</div><span class="fd">決定呼叫哪個工具 + 參數</span></div>
+          <div class="fa"></div>
+          <div class="fn"><div style="width:26px;height:26px;border-radius:50%;background:var(--s3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">⚡</div><div class="fn-box fn-t">Claude Code</div><span class="fd">去敲 MCP Server 的門</span></div>
+          <div class="fa"></div>
+          <div class="fn"><div style="width:26px;height:26px;border-radius:50%;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">🔧</div><div class="fn-box fn-m">MCP Server (GitHub)</div><span class="fd">執行 → 回傳結果</span></div>
+          <div class="fa"></div>
+          <div class="fn"><div style="width:26px;height:26px;border-radius:50%;background:var(--al);border:1px solid rgba(196,149,106,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">👤</div><div class="fn-box fn-u">You — 看到答案</div><span class="fd">此循環可跑多次直到完成</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S6 · MY MCPs -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 02 — MCP</div>
+      <h2 style="margin-bottom:20px;">我常用的 3 個 MCP</h2>
+      <div class="g3" style="flex:1;align-items:stretch;">
+        <div class="card-f" style="display:flex;flex-direction:column;gap:11px;">
+          <div style="font-size:26px;margin-bottom:2px;">⑂</div>
+          <h3>GitHub MCP</h3>
+          <div class="divider"></div>
+          <ul class="bl"><li>直接開 PR、建 branch</li><li>查 issue、留 review comment</li><li>不用手動操作 GitHub</li></ul>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:11px;">
+          <div style="font-size:26px;margin-bottom:2px;">📚</div>
+          <h3>Context7 MCP</h3>
+          <div class="divider"></div>
+          <ul class="bl"><li>查最新套件文件</li><li>AI 不會用過時的 API 寫 code</li><li>知識截止日問題徹底消失</li></ul>
+        </div>
+        <div class="card-w" style="display:flex;flex-direction:column;gap:11px;">
+          <div style="font-size:26px;margin-bottom:2px;">🌐</div>
+          <h3>Chrome DevTools MCP</h3>
+          <div class="divider"></div>
+          <ul class="bl"><li>AI 直接開瀏覽器、點按鈕</li><li>抓 console log 自動 debug</li><li>自動化測試神器</li></ul>
+        </div>
+      </div>
+      <div style="margin-top:13px;padding:11px 17px;background:var(--surface);border:1px solid var(--border);border-radius:9px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;">
+        <p style="font-size:16px;color:var(--muted);font-weight:500;flex-shrink:0;">依專案需求選用：</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <span class="chip">Zeabur</span><span class="chip">Supabase</span><span class="chip">Figma</span><span class="chip">AWS</span>
+          <span class="chip" style="color:var(--accent);">+ 還有更多</span>
+        </div>
+        <p style="font-size:16px;color:var(--muted);margin-left:auto;">原則：你重複開哪個工具，就去找那個工具的 MCP</p>
+      </div>
+    </div>
+
+    <!-- S7 · SKILLS INTRO -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 03 — Agent Skills</div>
+      <div style="margin-bottom:20px;">
+        <h2 style="margin-bottom:14px;">Agent Skills<br>是什麼？</h2>
+        <p class="lead">預先寫好的工作指令包，AI 在對的時機<strong>自動呼叫</strong>，你也可以用 <code>/指令</code> 手動觸發。</p>
+        <div class="divider" style="margin-top:16px;"></div>
+        <blockquote style="font-size:14px;margin-top:16px;">Skills 就像公司的 SOP——與其每次都跟新人說一遍流程，不如把 SOP 寫好，叫他照做就好。</blockquote>
+      </div>
+      <p style="font-size:16px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:12px;">怎麼觸發</p>
+      <div class="g2" style="gap:16px;align-items:stretch;">
+        <div class="card-f" style="padding:18px;display:flex;flex-direction:column;gap:9px;">
+          <div class="tag-f" style="width:fit-content;">AI 自動</div>
+          <p style="font-size:15px;color:var(--text);line-height:1.55;">你說「我想討論報告內容」→ AI 判斷這是設計討論 → 自己呼叫 <code>/brainstorming</code></p>
+        </div>
+        <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:9px;">
+          <div class="tag" style="width:fit-content;">手動呼叫</div>
+          <p style="font-size:15px;line-height:1.55;">直接輸入 <code>/test-driven-development</code> → AI 照 TDD 流程走，不需要任何額外說明。</p>
+        </div>
+      </div>
+
+      <!-- Skills "Write Once → Use Everywhere" Animation -->
+      <div style="margin-top:18px;display:flex;justify-content:center;">
+        <svg width="100%" height="195" viewBox="0 0 680 140" preserveAspectRatio="xMidYMid meet" style="max-width:950px;">
+          <!-- Skill card (left), vertically centered at y=70 -->
+          <rect x="0" y="28" width="175" height="84" rx="12" fill="#F2E9DE" stroke="rgba(196,149,106,.6)" stroke-width="1.5"/>
+          <text x="14" y="48" font-family="'DM Mono', monospace" font-size="9" fill="#96704A" letter-spacing=".12em">SKILL</text>
+          <text x="14" y="68" font-family="'DM Mono', monospace" font-size="13" font-weight="600" fill="#1A1714">tdd-workflow</text>
+          <text x="14" y="85" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">Red · Green · Refactor</text>
+          <text x="14" y="102" font-family="'DM Mono', monospace" font-size="9" fill="#96704A">coverage ≥ 80%</text>
+
+          <!-- Branch lines: from right edge of card (175,70) to each node's left edge (360,y_center) -->
+          <!-- top branch to y=22 (center of first node 5..39) -->
+          <path d="M 175 70 C 260 70 260 22 360 22" stroke="rgba(196,149,106,.38)" stroke-width="1.5" fill="none" stroke-dasharray="5 4"/>
+          <!-- middle branch to y=70 -->
+          <path d="M 175 70 L 360 70" stroke="rgba(196,149,106,.38)" stroke-width="1.5" fill="none" stroke-dasharray="5 4"/>
+          <!-- bottom branch to y=118 (center of third node 101..135) -->
+          <path d="M 175 70 C 260 70 260 118 360 118" stroke="rgba(196,149,106,.38)" stroke-width="1.5" fill="none" stroke-dasharray="5 4"/>
+
+          <!-- Packet: top branch -->
+          <circle r="4" fill="#C4956A" opacity="0">
+            <animate attributeName="cx" values="175;360" dur="1.6s" repeatCount="indefinite" begin="0s"/>
+            <animate attributeName="cy" values="70;22" dur="1.6s" repeatCount="indefinite" begin="0s"/>
+            <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="1.6s" repeatCount="indefinite" begin="0s"/>
+          </circle>
+          <!-- Packet: middle branch -->
+          <circle r="4" fill="#C4956A" opacity="0">
+            <animate attributeName="cx" values="175;360" dur="1.6s" repeatCount="indefinite" begin=".6s"/>
+            <animate attributeName="cy" values="70;70" dur="1.6s" repeatCount="indefinite" begin=".6s"/>
+            <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="1.6s" repeatCount="indefinite" begin=".6s"/>
+          </circle>
+          <!-- Packet: bottom branch -->
+          <circle r="4" fill="#C4956A" opacity="0">
+            <animate attributeName="cx" values="175;360" dur="1.6s" repeatCount="indefinite" begin="1.2s"/>
+            <animate attributeName="cy" values="70;118" dur="1.6s" repeatCount="indefinite" begin="1.2s"/>
+            <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="1.6s" repeatCount="indefinite" begin="1.2s"/>
+          </circle>
+
+          <!-- Context node 1: y=5 to y=39, center y=22 -->
+          <rect x="360" y="5" width="200" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+          <text x="375" y="18" font-family="'DM Mono', monospace" font-size="10" fill="#5FAD6A" font-weight="600">新功能開發</text>
+          <text x="375" y="32" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">先寫測試再實作</text>
+
+          <!-- Context node 2: y=53 to y=87, center y=70 -->
+          <rect x="360" y="53" width="200" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+          <text x="375" y="66" font-family="'DM Mono', monospace" font-size="10" fill="#C4956A" font-weight="600">Bug Fix</text>
+          <text x="375" y="80" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">先重現測試再修</text>
+
+          <!-- Context node 3: y=101 to y=135, center y=118 -->
+          <rect x="360" y="101" width="200" height="34" rx="9" fill="#EFE9E1" stroke="#DDD4C8" stroke-width="1"/>
+          <text x="375" y="114" font-family="'DM Mono', monospace" font-size="10" fill="#5B7D8A" font-weight="600">重構</text>
+          <text x="375" y="128" font-family="'DM Mono', monospace" font-size="9" fill="#7A7370">確保測試全數通過</text>
+
+         </svg>
+      </div>
+    </div>
+
+    <!-- S8 · SKILLS TYPES + TOKEN -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 03 — Agent Skills</div>
+      <div class="g2" style="flex:1;gap:18px;align-items:start;">
+
+        <div style="display:flex;flex-direction:column;gap:13px;">
+          <div class="card-w" style="padding:15px;">
+            <p style="font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;">工具型 Skills</p>
+            <div style="display:flex;flex-direction:column;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);"><code>/pdf</code><span style="font-size:16px;color:var(--muted);">生成 / 解析 PDF</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);"><code>/xlsx</code><span style="font-size:16px;color:var(--muted);">建立 / 分析 Excel</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);"><code>/pptx</code><span style="font-size:16px;color:var(--muted);">製作簡報</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;"><code>/frontend-design</code><span style="font-size:16px;color:var(--muted);">刻 UI 元件</span></div>
+            </div>
+          </div>
+          <div class="card-f" style="padding:15px;">
+            <p style="font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;">工作流型 Skills</p>
+            <div style="display:flex;flex-direction:column;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.2);"><code>/brainstorming</code><span style="font-size:16px;color:var(--muted);">想法 → 設計</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.2);"><code>/test-driven-development</code><span style="font-size:16px;color:var(--muted);">先測試再實作</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.2);"><code>/systematic-debugging</code><span style="font-size:16px;color:var(--muted);">SOP 排查 bug</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;"><code style="font-size:15px;">/verification-before-completion</code><span style="font-size:15px;color:var(--muted);">完成前跑驗證</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <h3 style="margin-bottom:7px;">Skills 的技術優勢</h3>
+            <p>Skills 載入的只有那個流程的 <strong>metadata</strong>，token 消耗非常少。</p>
+          </div>
+          <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;"><span style="font-size:16px;font-weight:500;">MCP</span><span style="font-size:15px;color:var(--muted);">每次對話都載入</span></div>
+              <div style="height:7px;background:var(--s2);border-radius:4px;overflow:hidden;"><div style="width:82%;height:100%;background:linear-gradient(90deg,#E8836A,#C4956A);border-radius:4px;"></div></div>
+              <p style="font-size:15px;color:var(--muted);margin-top:4px;">裝越多工具 → 消耗越多 token 💸</p>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;"><span style="font-size:16px;font-weight:500;">Skills</span><span style="font-size:15px;color:var(--muted);">按需載入</span></div>
+              <div style="height:7px;background:var(--s2);border-radius:4px;overflow:hidden;"><div style="width:16%;height:100%;background:linear-gradient(90deg,#6AB87A,#4CAF50);border-radius:4px;"></div></div>
+              <p style="font-size:15px;color:var(--muted);margin-top:4px;">你叫哪個它才載哪個 ✓</p>
+            </div>
+          </div>
+          <div class="card-a" style="padding:16px;margin-top:auto;">
+            <p style="font-size:15px;color:var(--ad);font-weight:500;line-height:1.55;">核心價值：讓 AI 每次都用你想要的方式做事，<strong style="color:var(--ad);">不需要每次重新說明</strong>。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S-NEW · SUPERPOWERS + OPENSPEC -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 04 — 工作流實戰</div>
+      <h2 style="margin-bottom:20px;">讓工作流跑起來的兩個工具</h2>
+      <div class="g2" style="flex:1;gap:16px;align-items:stretch;">
+
+        <!-- Superpowers -->
+        <div class="card-f" style="display:flex;flex-direction:column;gap:12px;padding:24px;">
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:clamp(26px,2.8vw,38px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:6px;">Superpowers</div>
+            <p style="font-size:16px;color:var(--muted);">一套涵蓋完整開發流程的 Agent Skills 集合，前面提到的工作流型 Skills 大部分都來自這裡。</p>
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/brainstorming</code><span style="font-size:15px;color:var(--muted);">想法 → 設計規格</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/writing-plans</code><span style="font-size:15px;color:var(--muted);">設計 → 詳細執行計畫</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/using-git-worktrees</code><span style="font-size:15px;color:var(--muted);">建立隔離工作空間</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/executing-plans</code><span style="font-size:15px;color:var(--muted);">按計畫逐步執行</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/subagent-driven-development</code><span style="font-size:15px;color:var(--muted);">平行派發多個子任務</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/test-driven-development</code><span style="font-size:15px;color:var(--muted);">Red-Green-Refactor 循環</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/systematic-debugging</code><span style="font-size:15px;color:var(--muted);">四階段系統性 debug</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/verification-before-completion</code><span style="font-size:15px;color:var(--muted);">完成前強制跑驗證</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/requesting-code-review</code><span style="font-size:15px;color:var(--muted);">產出完整 review 報告</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/receiving-code-review</code><span style="font-size:15px;color:var(--muted);">審視 review 意見再決定採納</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/finishing-a-development-branch</code><span style="font-size:15px;color:var(--muted);">收尾分支、決定合併策略</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/dispatching-parallel-agents</code><span style="font-size:15px;color:var(--muted);">同時跑多個獨立任務</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(196,149,106,.18);"><div class="dot"></div><code style="font-size:13px;">/writing-skills</code><span style="font-size:15px;color:var(--muted);">建立新 Skill 的流程指南</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;"><div class="dot"></div><code style="font-size:13px;">/using-superpowers</code><span style="font-size:15px;color:var(--muted);">啟動 Superpowers 的入口</span></div>
+          </div>
+        </div>
+
+        <!-- OpenSpec -->
+        <div class="card-w" style="display:flex;flex-direction:column;gap:12px;padding:24px;">
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:clamp(26px,2.8vw,38px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:6px;">OpenSpec</div>
+            <p style="font-size:16px;color:var(--muted);">在動手前建立人與 AI 的共識——需求、設計、任務清單全部版本化管理，避免需求漂移。</p>
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);"><div class="dot"></div><code style="font-size:13px;">opsx:propose</code><span style="font-size:15px;color:var(--muted);">建立 proposal + design + specs + tasks</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);"><div class="dot"></div><code style="font-size:13px;">opsx:apply</code><span style="font-size:15px;color:var(--muted);">執行 tasks，搭配 TDD</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);"><div class="dot"></div><code style="font-size:13px;">opsx:verify</code><span style="font-size:15px;color:var(--muted);">驗證實作符合規格</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;"><div class="dot"></div><code style="font-size:13px;">opsx:archive</code><span style="font-size:15px;color:var(--muted);">歸檔並同步 delta specs</span></div>
+          </div>
+          <div class="card-a" style="padding:12px;margin-top:auto;">
+            <p style="font-size:15px;color:var(--ad);">輕量、支援 20+ AI 助手、無硬性階段限制。比 GitHub Spec Kit 輕，比 Kiro 靈活。</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- S9 · MY WORKFLOW SETUP -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 04 — 工作流實戰</div>
+      <h2 style="margin-bottom:20px;">把規範寫給 AI 看</h2>
+      <div class="g2" style="flex:1;gap:20px;align-items:stretch;">
+        <div class="codeblock" style="font-size:12.5px;">
+          <span class="cg"># 我的設定結構</span><br><br>
+          <span class="co">CLAUDE.md</span><span class="cg">                   # AI 的工作憲章（最高規則）</span><br><br>
+          <span class="cw">.claude/rules/</span><br>
+          <span class="cb2">  ├── code-style.md</span><span class="cg">         # 命名、injection 規範</span><br>
+          <span class="cb2">  ├── architecture.md</span><span class="cg">       # 分層架構、設計模式</span><br>
+          <span class="cb2">  ├── api-design.md</span><span class="cg">         # URL 命名、Response 格式</span><br>
+          <span class="cb2">  ├── git.md</span><span class="cg">                # Commit 規範</span><br>
+          <span class="cb2">  ├── testing.md</span><span class="cg">            # 強制 TDD 規則</span><br>
+          <span class="cb2">  └── workflow.md</span><span class="cg">           # 綠地／褐地流程</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px;justify-content:center;">
+          <blockquote style="font-size:15px;">這些規則寫好之後，我不需要每次 code review 都說同樣的話——AI 第一次就會照規範寫。</blockquote>
+          <div class="divider"></div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;align-items:flex-start;gap:9px;"><div class="dot" style="margin-top:5px;"></div><p><strong>URL 要用 kebab-case</strong> — AI 記住了</p></div>
+            <div style="display:flex;align-items:flex-start;gap:9px;"><div class="dot" style="margin-top:5px;"></div><p><strong>先寫測試再實作</strong> — AI 記住了</p></div>
+            <div style="display:flex;align-items:flex-start;gap:9px;"><div class="dot" style="margin-top:5px;"></div><p><strong>Response 格式統一</strong> — AI 記住了</p></div>
+            <div style="display:flex;align-items:flex-start;gap:9px;"><div class="dot" style="margin-top:5px;"></div><p><strong>禁止 field injection</strong> — AI 記住了</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S10 · MY WORKFLOW -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:8px;">Part 04 — 工作流實戰</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;">
+        <h2>我的工作流</h2>
+        <p style="font-size:16px;color:var(--muted);font-style:italic;">每個人喜歡的工作方式不一樣，這只是我試了很多專案後找到最順手的</p>
+      </div>
+      <div class="g2" style="flex:1;gap:16px;align-items:start;">
+
+        <!-- 完整流程 -->
+        <div class="card-f" style="height:100%;display:flex;flex-direction:column;gap:10px;padding:20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            <div class="tag-f">完整流程</div>
+            <span style="font-size:15px;color:var(--muted);">大型新專案、需跨 session</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.18);">
+              <div class="sb">1</div><code>/brainstorming</code><span style="font-size:16px;color:var(--muted);">探索設計、確認方向</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.18);">
+              <div class="sb">2</div><code>/writing-plans</code><span style="font-size:16px;color:var(--muted);">產出詳細執行計畫</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.18);">
+              <div class="sb">3</div><code>/using-git-worktrees</code><span style="font-size:16px;color:var(--muted);">隔離工作空間</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.18);">
+              <div class="sb">4</div><code>/subagent-driven-development</code><span style="font-size:16px;color:var(--muted);">委派子代理執行任務</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(196,149,106,.18);">
+              <div class="sb">5</div><code>/verification-before-completion</code><span style="font-size:16px;color:var(--muted);">完成前強制跑驗證</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;">
+              <div class="sb">6</div><code>/finishing-a-development-branch</code><span style="font-size:16px;color:var(--muted);">收尾分支、決定合併策略</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 日常開發 -->
+        <div class="card-w" style="height:100%;display:flex;flex-direction:column;gap:10px;padding:20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            <div class="tag">日常開發 (~90%)</div>
+            <span style="font-size:15px;color:var(--muted);">新舊專案都適用</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div class="sb">1</div><span style="font-size:14px;color:var(--text);font-weight:500;">盤點範圍</span><span style="font-size:15px;color:var(--muted);">涉及的模組、依賴、可能的影響面</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div class="sb">2</div><code>/brainstorming</code><span style="font-size:16px;color:var(--muted);">考慮既有架構約束</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div class="sb">3</div><code>opsx:propose</code><span style="font-size:16px;color:var(--muted);">建立 specs + tasks</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div class="sb" style="background:var(--s3);color:var(--muted);border:1px solid var(--border);">*</div><code>/writing-plans</code><span style="font-size:15px;color:var(--muted);">複雜任務才展開</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div class="sb">4</div><code>opsx:apply</code><span style="font-size:15px;color:var(--muted);">+</span><code>/test-driven-development</code>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div class="sb">5</div><code>/verification-before-completion</code>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;">
+              <div class="sb">6</div><code>opsx:archive</code><span style="font-size:16px;color:var(--muted);">歸檔並同步 specs</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- S11 · MY SKILLS & COMMANDS -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">Part 05 — 我的工具箱</div>
+      <h2 style="margin-bottom:16px;">我的 Skills & Commands</h2>
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;flex:1;align-items:start;">
+
+        <!-- Left: Commands + Skills stacked -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <!-- Commands -->
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <p style="font-size:11px;font-family:'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);">Commands</p>
+            <div class="card-f" style="padding:0;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid rgba(196,149,106,.2);">
+                <code style="flex-shrink:0;font-size:15px;">/verify</code>
+                <p style="font-size:15px;color:var(--muted);">完整驗證流程，任一步驟失敗立即停止</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid rgba(196,149,106,.2);">
+                <code style="flex-shrink:0;font-size:15px;">/learn</code>
+                <p style="font-size:15px;color:var(--muted);">提取 session 學習，存記憶或升級成 Skill</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;">
+                <code style="flex-shrink:0;font-size:15px;">/revise-claude-md</code>
+                <p style="font-size:15px;color:var(--muted);">回顧學到什麼，提案更新 CLAUDE.md</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Skills -->
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <p style="font-size:11px;font-family:'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);">Skills</p>
+            <div class="card-w" style="padding:0;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);">
+                <code style="flex-shrink:0;font-size:15px;">tdd-workflow</code>
+                <p style="font-size:15px;color:var(--muted);">強制 TDD，80%+ 覆蓋率，每次寫功能前載入</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);">
+                <code style="flex-shrink:0;font-size:15px;">agent-skills-code-review-router</code>
+                <p style="font-size:15px;color:var(--muted);">自動判斷派給 Gemini 或 Codex 做 code review</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);">
+                <code style="flex-shrink:0;font-size:15px;">claude-md-improver</code>
+                <p style="font-size:15px;color:var(--muted);">審計 CLAUDE.md 品質，對照 codebase 打分</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);">
+                <code style="flex-shrink:0;font-size:15px;">frontend-design</code>
+                <p style="font-size:15px;color:var(--muted);">生成高品質 UI 元件，直接可上 production</p>
+              </div>
+              <div style="padding:11px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="chip" style="font-size:11px;">pdf</span>
+                <span class="chip" style="font-size:11px;">xlsx</span>
+                <span class="chip" style="font-size:11px;">pptx</span>
+                <span class="chip" style="font-size:11px;">docx</span>
+                <span class="chip" style="font-size:11px;">canvas-design</span>
+                <span class="chip" style="font-size:11px;">webapp-testing</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: terminal window visual -->
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;">
+          <svg viewBox="0 0 290 380" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;filter:drop-shadow(0 16px 48px rgba(150,112,74,.14));">
+            <!-- Window body -->
+            <rect width="290" height="380" rx="16" fill="#F2E9DE" stroke="rgba(196,149,106,.55)" stroke-width="1.5"/>
+            <!-- Title bar -->
+            <rect width="290" height="44" rx="16" fill="#EDE3D6"/>
+            <rect y="28" width="290" height="16" fill="#EDE3D6"/>
+            <line x1="0" y1="44" x2="290" y2="44" stroke="rgba(196,149,106,.3)" stroke-width="1"/>
+            <!-- Dots -->
+            <circle cx="22" cy="22" r="5.5" fill="#E8836A" opacity=".65"/>
+            <circle cx="41" cy="22" r="5.5" fill="#C4956A" opacity=".5"/>
+            <circle cx="60" cy="22" r="5.5" fill="#C4956A" opacity=".28"/>
+            <!-- Title -->
+            <text x="145" y="27" text-anchor="middle" font-family="'DM Mono', monospace" font-size="11" fill="#7A7370" letter-spacing=".08em">claude-code</text>
+
+            <!-- /verify -->
+            <text x="20" y="74" font-family="'DM Mono', monospace" font-size="13" fill="#C4956A" font-weight="500">&gt; /verify</text>
+            <text x="20" y="94" font-family="'DM Mono', monospace" font-size="11" fill="#5FAD6A">✓</text>
+            <text x="34" y="94" font-family="'DM Mono', monospace" font-size="11" fill="#7A7370">compile</text>
+            <rect x="112" y="86" width="100" height="6" rx="3" fill="rgba(95,173,106,.15)"/>
+            <rect x="112" y="86" width="100" height="6" rx="3" fill="rgba(95,173,106,.55)"/>
+            <text x="220" y="94" font-family="'DM Mono', monospace" font-size="10" fill="#5FAD6A">ok</text>
+            <text x="20" y="112" font-family="'DM Mono', monospace" font-size="11" fill="#5FAD6A">✓</text>
+            <text x="34" y="112" font-family="'DM Mono', monospace" font-size="11" fill="#7A7370">tests</text>
+            <rect x="112" y="104" width="100" height="6" rx="3" fill="rgba(95,173,106,.15)"/>
+            <rect x="112" y="104" width="82" height="6" rx="3" fill="rgba(95,173,106,.55)"/>
+            <text x="220" y="112" font-family="'DM Mono', monospace" font-size="10" fill="#7A7370">94%</text>
+            <text x="20" y="130" font-family="'DM Mono', monospace" font-size="11" fill="#5FAD6A">✓</text>
+            <text x="34" y="130" font-family="'DM Mono', monospace" font-size="11" fill="#7A7370">coverage</text>
+            <rect x="112" y="122" width="100" height="6" rx="3" fill="rgba(95,173,106,.15)"/>
+            <rect x="112" y="122" width="88" height="6" rx="3" fill="rgba(95,173,106,.55)"/>
+            <text x="220" y="130" font-family="'DM Mono', monospace" font-size="10" fill="#5FAD6A">pass</text>
+
+            <!-- Divider -->
+            <line x1="20" y1="148" x2="270" y2="148" stroke="rgba(196,149,106,.28)" stroke-width="1" stroke-dasharray="4 3"/>
+
+            <!-- /learn -->
+            <text x="20" y="170" font-family="'DM Mono', monospace" font-size="13" fill="#C4956A" font-weight="500">&gt; /learn</text>
+            <text x="20" y="190" font-family="'DM Mono', monospace" font-size="11" fill="#7A7370">→ extracting insights...</text>
+            <text x="20" y="208" font-family="'DM Mono', monospace" font-size="11" fill="#5B7D8A">  3 patterns → memory</text>
+            <text x="20" y="224" font-family="'DM Mono', monospace" font-size="11" fill="#5B7D8A">  1 candidate → new skill</text>
+
+            <!-- Divider -->
+            <line x1="20" y1="242" x2="270" y2="242" stroke="rgba(196,149,106,.28)" stroke-width="1" stroke-dasharray="4 3"/>
+
+            <!-- agent-skills-code-review-router auto -->
+            <text x="20" y="264" font-family="'DM Mono', monospace" font-size="13" fill="#C4956A" font-weight="500">&gt; /agent-skills-code-review-router</text>
+            <text x="20" y="284" font-family="'DM Mono', monospace" font-size="11" fill="#7A7370">→ analyzing changes...</text>
+            <text x="20" y="302" font-family="'DM Mono', monospace" font-size="11" fill="#5B7D8A">  routing to Codex CLI</text>
+            <text x="20" y="318" font-family="'DM Mono', monospace" font-size="11" fill="#5B7D8A">  reason: focused refactor</text>
+
+            <!-- Status bar -->
+            <rect x="0" y="353" width="290" height="27" rx="0" fill="#EDE3D6"/>
+            <rect x="0" y="353" width="290" height="27" rx="16" fill="#EDE3D6"/>
+            <rect x="0" y="353" width="290" height="14" fill="#EDE3D6"/>
+            <line x1="0" y1="353" x2="290" y2="353" stroke="rgba(196,149,106,.3)" stroke-width="1"/>
+            <circle cx="18" cy="366" r="4" fill="#5FAD6A" opacity=".75"/>
+            <text x="28" y="370" font-family="'DM Mono', monospace" font-size="10" fill="#7A7370" letter-spacing=".04em">ready</text>
+            <text x="220" y="370" font-family="'DM Mono', monospace" font-size="10" fill="rgba(196,149,106,.7)" letter-spacing=".04em">main</text>
+          </svg>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- S12 · SECURITY -->
+    <div class="slide">
+      <div class="lbl" style="margin-bottom:10px;">注意事項</div>
+      <h2 style="margin-bottom:18px;">AI 工具的資安邊界</h2>
+      <div class="g2" style="gap:16px;margin-bottom:14px;">
+
+        <!-- 面向 1 -->
+        <div class="card-f" style="display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tag-f">數據訓練疑慮</div>
+          </div>
+          <p style="font-size:16px;line-height:1.6;">呼叫商業 API 時，輸入的內容<strong>可能被用於模型訓練</strong>，這幾乎無法完全避免。</p>
+          <div class="divider"></div>
+          <p style="font-size:12px;font-family:'DM Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">防範原則</p>
+          <ul class="bl">
+            <li>絕對不輸入：個資、密碼、API keys、商業機密</li>
+            <li>程式碼中的敏感邏輯先抽換成假資料再貼入</li>
+            <li>企業敏感專案考慮使用<strong>私有部署</strong>或<strong>企業版合約</strong>（明確不訓練）</li>
+          </ul>
+        </div>
+
+        <!-- 面向 2 -->
+        <div class="card-w" style="display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tag">系統權限控管</div>
+          </div>
+          <p style="font-size:16px;line-height:1.6;">Agent 能力越強，<strong>誤操作的代價越高</strong>。最小權限原則在 AI 工具上同樣適用。</p>
+          <div class="divider"></div>
+          <p style="font-size:12px;font-family:'DM Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">防範原則</p>
+          <ul class="bl">
+            <li>每次 Agent 要執行指令時，<strong>看清楚再確認</strong>，不要全部 auto-approve</li>
+            <li>用 Sandbox / 隔離環境跑不確定的 Agent 任務</li>
+            <li>生產環境的寫入、刪除操作，永遠要人工二次確認</li>
+            <li>MCP 只裝需要的，裝越多 = 暴露面越大</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Discussion questions -->
+      <div style="padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:11px;">
+        <p style="font-size:12px;font-family:'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">開放討論</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <span class="chip" style="font-size:13px;">公司有哪些資料是「絕對不能輸入 AI」的？</span>
+          <span class="chip" style="font-size:13px;">目前誰在管 AI 工具的使用規範？</span>
+          <span class="chip" style="font-size:13px;">Agent 要刪檔，你會直接按確認嗎？</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- S13 · TAKEAWAY -->
+    <div class="slide">
+      <h2 style="margin-bottom:14px;">三件記得的事</h2>
+
+      <div style="flex:1;display:flex;flex-direction:column;gap:0;">
+
+        <!-- 01 LEFT -->
+        <div style="flex:1;width:58%;align-self:flex-start;display:flex;">
+          <div class="card-f" style="flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;">
+            <div style="font-family:'Playfair Display',serif;font-size:38px;font-weight:700;color:var(--accent);opacity:.2;line-height:1;">01</div>
+            <h3 style="font-size:19px;">MCP 給 AI 手腳</h3>
+            <div class="divider"></div>
+            <p style="font-size:16px;line-height:1.6;">裝對 MCP，AI 就能直接操作 GitHub、瀏覽器、資料庫。不再只是說說而已，它能真的進去做。</p>
+            <div style="margin-top:auto;font-family:'DM Mono',monospace;font-size:11px;color:var(--ad);">你常開哪個工具 → 找它的 MCP</div>
+          </div>
+        </div>
+
+        <!-- Arrow 1: down-right -->
+        <div style="flex:0 0 40px;margin-left:24%;display:flex;align-items:center;">
+          <svg width="160" height="40" viewBox="0 0 160 40" fill="none">
+            <path d="M 8 8 C 40 8 120 32 152 32" stroke="rgba(196,149,106,.45)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M 152 32 L 138 24 M 152 32 L 140 40" stroke="rgba(196,149,106,.45)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- 02 CENTER -->
+        <div style="flex:1;width:58%;margin-left:21%;display:flex;">
+          <div class="card-w" style="flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;">
+            <div style="font-family:'Playfair Display',serif;font-size:38px;font-weight:700;color:var(--accent);opacity:.2;line-height:1;">02</div>
+            <h3 style="font-size:19px;">Skills 寫好 SOP</h3>
+            <div class="divider"></div>
+            <p style="font-size:16px;line-height:1.6;">把你希望 AI 每次照做的流程寫成 Skill。只需要寫一次，之後每個專案都不用重新說明。</p>
+            <div style="margin-top:auto;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">重複跟 AI 說第二次的話 → 寫成 Skill</div>
+          </div>
+        </div>
+
+        <!-- Arrow 2: down-right -->
+        <div style="flex:0 0 40px;margin-left:50%;display:flex;align-items:center;">
+          <svg width="160" height="40" viewBox="0 0 160 40" fill="none">
+            <path d="M 8 8 C 40 8 120 32 152 32" stroke="rgba(196,149,106,.45)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M 152 32 L 138 24 M 152 32 L 140 40" stroke="rgba(196,149,106,.45)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- 03 RIGHT -->
+        <div style="flex:1;width:58%;margin-left:42%;display:flex;">
+          <div class="card" style="flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;">
+            <div style="font-family:'Playfair Display',serif;font-size:38px;font-weight:700;color:var(--accent);opacity:.2;line-height:1;">03</div>
+            <h3 style="font-size:19px;">CLAUDE.md 建規範</h3>
+            <div class="divider"></div>
+            <p style="font-size:16px;line-height:1.6;">把團隊規範寫進 CLAUDE.md，AI 每一個動作都會照著走。Code review 不再說同樣的話。</p>
+            <div style="margin-top:auto;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">code review 說第二次的規範 → 寫進去</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- S11 · Q&A -->
+    <div class="slide">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;">
+        <div style="position:absolute;right:-60px;top:50%;transform:translateY(-50%);font-family:'Playfair Display',serif;font-size:300px;font-weight:700;color:var(--accent);opacity:.05;line-height:1;user-select:none;pointer-events:none;">?</div>
+        <div class="lbl" style="margin-bottom:18px;">Q & A</div>
+        <h1 style="margin-bottom:22px;">有什麼<br>想問的？</h1>
+        <div class="divider" style="margin-bottom:22px;"></div>
+        <p class="lead" style="max-width:460px;margin-bottom:28px;">歡迎討論任何關於 AI 工具、MCP、Skills 或工作流設計的問題。</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="chip">CLI Coding Tools</span>
+          <span class="chip">MCP 設定</span>
+          <span class="chip">Agent Skills</span>
+          <span class="chip">CLAUDE.md 怎麼寫</span>
+          <span class="chip">工作流設計</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let cur = 0;
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    function update() {
+      document.getElementById('progress').style.width = `${(cur+1)/total*100}%`;
+      document.getElementById('counter').textContent = `${cur+1} / ${total}`;
+    }
+    function go(dir) {
+      const n = cur + dir;
+      if (n < 0 || n >= total) return;
+      slides[cur].classList.remove('active');
+      cur = n;
+      slides[cur].classList.add('active');
+      update();
+      if (cur === 0) startTypewriter();
+    }
+
+    // ── Typewriter (infinite loop on cover lead) ──
+    const TW_TEXT = '從 CLI Coding Tools 到 MCP 協定，到 Agent Skills，到實戰工作流。';
+    let twTimer = null;
+    function startTypewriter() {
+      if (twTimer) { clearTimeout(twTimer); twTimer = null; }
+      const el = document.getElementById('cover-lead');
+      if (!el) return;
+      let pos = 0, deleting = false;
+
+      function step() {
+        if (!deleting) {
+          pos++;
+          el.innerHTML = TW_TEXT.slice(0, pos) + '<span class="tw-cursor">|</span>';
+          if (pos === TW_TEXT.length) {
+            twTimer = setTimeout(() => { deleting = true; step(); }, 1800);
+          } else {
+            twTimer = setTimeout(step, 55);
+          }
+        } else {
+          pos--;
+          el.innerHTML = TW_TEXT.slice(0, pos) + '<span class="tw-cursor">|</span>';
+          if (pos === 0) {
+            twTimer = setTimeout(() => { deleting = false; step(); }, 400);
+          } else {
+            twTimer = setTimeout(step, 30);
+          }
+        }
+      }
+      twTimer = setTimeout(step, 600);
+    }
+    document.addEventListener('keydown', e => {
+      if (['ArrowRight','ArrowDown',' '].includes(e.key)) { e.preventDefault(); go(1); }
+      if (['ArrowLeft','ArrowUp'].includes(e.key)) { e.preventDefault(); go(-1); }
+    });
+    let tx = 0;
+    document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+    document.addEventListener('touchend', e => { const d = tx - e.changedTouches[0].clientX; if (Math.abs(d) > 50) go(d > 0 ? 1 : -1); });
+    update();
+    startTypewriter();
+  </script>
+</body>
+</html>

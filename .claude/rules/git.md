@@ -6,6 +6,10 @@
 - 遵循專案的 branching strategy
 - Pull Request 前確保通過所有測試
 
+## Co-author
+
+- 禁止在 commit message 中加入 `Co-Authored-By: Claude` 或任何 AI 署名
+
 ## Commit Messages
 
 - 格式：`type(scope): 繁體中文描述`

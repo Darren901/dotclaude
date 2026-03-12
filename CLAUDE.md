@@ -4,10 +4,14 @@
 
 **必須使用繁體中文 (Traditional Chinese) 與使用者溝通。**
 
-**實作任何功能或 Bug Fix 的強制順序（無例外）：**
+**實作任何功能的強制順序（無例外）：**
 1. 禁止在呼叫 `tdd-workflow` Skill 之前使用 Write 或 Edit 工具修改任何程式碼
 2. 禁止在呼叫 `superpowers:test-driven-development` Skill 之前開始實作
 3. 違反以上兩點視為流程錯誤，必須立即停止並重新執行正確順序
+
+**Fix Bug 的強制順序（無例外）：**
+1. 必須先呼叫 `superpowers:systematic-debugging` 診斷根因，禁止跳過直接修改程式碼
+2. 診斷完成後，接續上方「功能實作強制順序」執行
 
 ---
 
@@ -34,7 +38,6 @@
 
 **Project**: [專案名稱 - 請在此填入]
 **Description**: [專案描述 - 請在此填入]
-**開發模式**: [綠地 Greenfield / 褐地 Brownfield]
 
 **Tech Stack**:
 
